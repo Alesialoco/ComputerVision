@@ -1,0 +1,101 @@
+from builtins import range
+import numpy as np
+
+def affine_forward(x, w, b):
+    """
+    Вычисляет прямой проход для аффинного (полносвязного) слоя.
+    Входные данные x имеют форму (N, d_1, ..., d_k) и содержат мини-пакет из N примеров, 
+    где каждый пример x[i] имеет форму (d_1, ..., d_k). Мы преобразуем каждый входной вектор 
+    в вектор размерности D = d_1 * ... * d_k, и затем преобразуем его в выходной вектор размерности M.
+
+    Входные данные:
+    - x: Массив numpy, содержащий входные данные, формы (N, d_1, ..., d_k)
+    - w: Массив numpy весов, формы (D, M)
+    - b: Массив numpy смещений (bias), формы (M,)
+
+    Возвращает кортеж:
+    - out: output, of shape (N, M)
+    - cache: (x, w, b)
+    """
+    x_reshaped = x.reshape(x.shape[0], -1)
+    out = np.matmul(x_reshaped, w) + b
+    cache = (x, w, b)
+    return out, cache
+
+
+def affine_backward(dout, cache):
+    """
+    Вычисляет обратный проход для полносвязного слоя.
+    Входные данные:
+    - dout: Производная от исходного слоя, форма (N, M)
+    - cache: 
+        - x: Входные данные, форма (N, d_1, ..., d_k)
+        - w: Веса, форма (D, M)
+        - b: Смещения, форма (M,)
+
+    Возвращает кортеж:
+    - dx: Градиент относительно x, форма (N, d1, ..., d_k)
+    - dw: Градиент относительно w, форма (D, M)
+    - db: Градиент относительно b, форма (M,)
+    """
+    x, w, b = cache
+    x_reshaped = x.reshape(x.shape[0], -1)
+
+    dx_reshaped = np.matmul(dout, w.T)  
+    dx = dx_reshaped.reshape(x.shape) 
+    dw = np.matmul(x_reshaped.T, dout)
+    db = np.sum(dout, axis=0) 
+
+    return dx, dw, db
+
+
+def relu_forward(x):
+    """
+    Вычисляет прямой проход для слоя выпрямленных линейных блоков (ReLU).
+
+    Входные данные:
+    - x: Входные данные любой формы
+    Возвращает кортеж:
+    - out: Выходные данные той же формы, что и x
+    - cache: x
+    """
+    out = np.maximum(0, x)
+    cache = x
+    return out, cache
+
+
+def relu_backward(dout, cache):
+    """
+    Вычисляет обратный проход для слоя ReLU.
+    Входные данные:
+    - dout: Производные от исходного слоя любой формы
+    - cache: Входные данные x той же формы, что и dout
+    Возвращает:
+    - dx: Градиент относительно x
+    """
+    x = cache
+    dx = np.where(x > 0, dout, 0)
+    return dx
+
+
+def softmax_loss(x, y):
+    """
+    Вычисляет функцию потерь и градиент для классификации с использованием функции softmax.
+    Входные данные:
+    - x: Входные данные формы (N, C), где x[i, j] — оценка для j-го класса для i-го входного значения.
+    - y: Вектор меток формы (N,), где y[i] — метка для x[i] и 0 <= y[i] < C
+    Возвращает кортеж:
+    - loss: Скаляр, задающий функцию потерь
+    - dx: Градиент функции потерь относительно x
+    """
+    loss, dx = None, None
+
+    N = x.shape[0]
+    
+    y_true = np.zeros_like(x)
+    y_true[np.arange(N), y] = 1
+    probabilities = np.exp(x) / np.sum(np.exp(x), axis=1, keepdims=True)
+    loss = -np.sum(y_true * np.log(probabilities)) / N
+    dx = (probabilities - y_true) / N
+
+    return loss, dx
